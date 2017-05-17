@@ -22,13 +22,12 @@ import java.util.List;
 import java.util.concurrent.Future;
 
 public class Main {
+    public static int i = 0;
 
     public static void main(String[] args) throws IOException, InterruptedException {
         getProxyList("http://free-proxy-list.net/");
         getProxyList("http://www.us-proxy.org/");
-        getProxyList("http://free-proxy-list.net/uk-proxy.html");
-        getProxyList("http://free-proxy-list.net/anonymous-proxy.html");
-        System.out.println("All thread finished");
+        System.out.println("All thread finished: " + i);
     }
 
     private static void getProxyList(String proxySiteUrl) throws IOException, InterruptedException {
@@ -107,6 +106,7 @@ public class Main {
                 HttpResponse response = future.get();
                 if (response.getStatusLine().getStatusCode() == 200) {
                     System.out.println("time used: " + (System.currentTimeMillis() - pre) / 1000 + "s");
+                    i++;
                 }
 
                 System.out.println(response.toString());
