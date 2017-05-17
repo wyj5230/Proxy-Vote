@@ -25,8 +25,9 @@ public class Main {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         getProxyList("http://free-proxy-list.net/");
-        getProxyList("http://free-proxy-list.net/");
-        getProxyList("http://free-proxy-list.net/");
+        getProxyList("http://www.us-proxy.org/");
+        getProxyList("http://free-proxy-list.net/uk-proxy.html");
+        getProxyList("http://free-proxy-list.net/anonymous-proxy.html");
         System.out.println("All thread finished");
     }
 
