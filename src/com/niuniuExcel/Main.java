@@ -25,9 +25,12 @@ public class Main {
     public static int i = 0;
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        getProxyList("http://free-proxy-list.net/");
-        getProxyList("http://www.us-proxy.org/");
-        System.out.println("All thread finished: " + i);
+        do {
+            getProxyList("http://www.us-proxy.org/");
+            System.out.println("1 thread finished: " + i);
+            getProxyList("http://free-proxy-list.net/");
+            System.out.println("2 thread finished: " + i);
+        } while (true);
     }
 
     private static void getProxyList(String proxySiteUrl) throws IOException, InterruptedException {
@@ -96,22 +99,21 @@ public class Main {
 
                 RequestConfig requestConfig = RequestConfig.custom()
                         .setProxy(host)
-                        .setConnectionRequestTimeout(200000)
-                        .setConnectTimeout(200000)
-                        .setSocketTimeout(200000)
+                        .setConnectionRequestTimeout(300000)
+                        .setConnectTimeout(300000)
+                        .setSocketTimeout(300000)
                         .build();
                 request.setConfig(requestConfig);
 
                 Future<HttpResponse> future = httpClient.execute(request, null);
                 HttpResponse response = future.get();
                 if (response.getStatusLine().getStatusCode() == 200) {
-                    System.out.println("time used: " + (System.currentTimeMillis() - pre) / 1000 + "s");
+                    System.out.println("Success! time used: " + (System.currentTimeMillis() - pre) / 1000 + "s");
                     i++;
                 }
-
-                System.out.println(response.toString());
+//                System.out.println(response.toString());
             } catch (Exception ex) {
-                System.out.println(ex.getLocalizedMessage());
+//               System.out.println(ex.getLocalizedMessage());
                 return;
             }
         }
