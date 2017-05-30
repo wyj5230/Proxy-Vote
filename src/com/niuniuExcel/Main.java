@@ -25,19 +25,37 @@ import javax.swing.filechooser.FileSystemView;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.Future;
 
 public class Main {
     public static int count = 0;
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        do {
-            astronVote();
-        } while (true);
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    astronVoteUsingProxy("http://free-proxy-list.net/");
+                } catch (Exception ex) {
+                    System.out.println(ex);
+                }
+            }
+        }).start();
+        System.out.println("Thead 1 started");
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    astronVoteUsingProxy("https://www.us-proxy.org/");
+                } catch (Exception ex) {
+                    System.out.println(ex);
+                }
+            }
+        }).start();
+        System.out.println("Thead 2 started");
     }
 
-    private static void astronVoteUsingProxy() throws IOException {
-        Document doc = Jsoup.connect("http://free-proxy-list.net/").get();
+    private static void astronVoteUsingProxy(String url) throws IOException {
+        Document doc = Jsoup.connect(url).get();
         Elements proxys = doc.select("tbody tr");
         for (int i = 0; i < proxys.size(); i++) {
             String ip = proxys.get(i).select("td").get(0).text();
@@ -49,7 +67,8 @@ public class Main {
             } else {
                 host = new HttpHost(ip, port);
             }
-            astronVote(host);
+            astronVote(host, i);
+            System.out.println(i + "/200");
         }
     }
 
@@ -103,7 +122,7 @@ public class Main {
         }
     }
 
-    private static void astronVote(HttpHost host) throws IOException {
+    private static void astronVote(HttpHost host, int i) throws IOException {
         //   Document doc = Jsoup.connect("http://www.stepon.top/misc/voicevote/index
         // .php?from=groupmessage&isappinstalled=0").get();
         Connection.Response res = Jsoup.connect("http://www.stepon.top/misc/voicevote/index" +
@@ -111,7 +130,7 @@ public class Main {
                 .method(Connection.Method.GET)
                 .execute();
         String phpsessid = res.cookie("PHPSESSID");
-        System.out.println(phpsessid);
+        //  System.out.println(phpsessid);
         Document doc = res.parse();
 
 
@@ -137,20 +156,27 @@ public class Main {
         request.addHeader("Accept-Encoding", "gzip, deflate");
         request.addHeader("Accept-Language", "zh-CN,zh;q=0.8");
         request.addHeader("Connection", "keep-alive");
-        request.addHeader("Cookie", "PHPSESSID=" + phpsessid + ";");
+        request.addHeader("Cookie", "PHPSESSID=" + phpsessid);
         request.addHeader("X-Requested-With", "XMLHttpRequest");
         request.setEntity(params);
+
+        String fakeForwardIp = "10.132." + (int )(Math.random() * 150 + 1) + "." + (int )(Math.random() * 150 + 1);
+        request.addHeader("X-Forwarded-For", fakeForwardIp);
+        System.out.println(fakeForwardIp);
 
         try {
             HttpResponse response = httpClient.execute(request);
             HttpEntity entity = response.getEntity();
             String responseString = EntityUtils.toString(entity, "UTF-8");
-            if (responseString.substring(8, 9).equals("1")) {
+            if (responseString.substring(8, 9).equals("1") && !responseString.substring(8, 10).equals("11")) {
                 count++;
-                System.out.println("success: " + count);
+                System.out.println("success: " + count + "; Response: " + responseString);
+                astronVote(host, count + 50);
+            } else {
+                System.out.println(responseString);
             }
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            //   System.out.println(e.getLocalizedMessage());
         }
     }
 
@@ -158,11 +184,6 @@ public class Main {
 //        Document doc = Jsoup.connect("https://www.us-proxy.org/").get();
         Document doc = Jsoup.connect(proxySiteUrl).get();
         Elements proxys = doc.select("tbody tr");
-
-        ConnectingIOReactor ioReactor = new DefaultConnectingIOReactor();
-        PoolingNHttpClientConnectionManager cm = new PoolingNHttpClientConnectionManager(ioReactor);
-        CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom().setConnectionManager(cm).build();
-        httpClient.start();
 
 
         HttpPost request = new HttpPost("http://www.stepon.top/misc/voicevote/api.php?op=vote");
@@ -196,33 +217,38 @@ public class Main {
             } else {
                 host = new HttpHost(ip, port);
             }
-            threads[i] = new GetThread(httpClient, request, host);
+            threads[i] = new GetThread(request, host);
         }
 
         for (GetThread thread : threads) {
             thread.start();
-            Thread.sleep(2000);
         }
         for (GetThread thread : threads) {
             thread.join();
         }
-        httpClient.close();
+        // httpClient.close();
     }
 
     static class GetThread extends Thread {
-        private CloseableHttpAsyncClient httpClient;
+        // private CloseableHttpAsyncClient httpClient;
         private HttpPost request;
         private HttpHost host;
 
-        public GetThread(CloseableHttpAsyncClient httpClient, HttpPost request, HttpHost host) {
-            this.httpClient = httpClient;
+        public GetThread(HttpPost request, HttpHost host) {
+            //this.httpClient = httpClient;
             this.request = request;
             this.host = host;
         }
 
         @Override
         public void run() {
+
             try {
+                ConnectingIOReactor ioReactor = new DefaultConnectingIOReactor();
+                PoolingNHttpClientConnectionManager cm = new PoolingNHttpClientConnectionManager(ioReactor);
+                CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom().setConnectionManager(cm).build();
+                httpClient.start();
+
                 //start thread
                 System.out.println("Thread start with " + host.getHostName() + " : " + host.getPort());
                 long pre = System.currentTimeMillis();
@@ -234,12 +260,13 @@ public class Main {
                         .method(Connection.Method.GET)
                         .execute();
                 String phpsessid = res.cookie("PHPSESSID");
-                System.out.println(phpsessid);
                 Document doc = res.parse();
 
                 String script = doc.select("script").get(4).toString();
                 String token = script.substring(script.lastIndexOf("'token'") + 9, script.lastIndexOf("'token'") + 49);
 
+                System.out.println("phpsessid: " + phpsessid + "; token: " + token + "; start with: " + host
+                        .getHostName() + " - " + host.getPort());
                 //set phpsessid and token
                 StringEntity params = new StringEntity("vote-id=3025&token=" + token,
                         ContentType.APPLICATION_FORM_URLENCODED);
@@ -249,9 +276,9 @@ public class Main {
                 //set host and time out
                 RequestConfig requestConfig = RequestConfig.custom()
                         .setProxy(host)
-                        .setConnectionRequestTimeout(300000)
-                        .setConnectTimeout(300000)
-                        .setSocketTimeout(300000)
+                        .setConnectionRequestTimeout(30000)
+                        .setConnectTimeout(30000)
+                        .setSocketTimeout(30000)
                         .build();
                 request.setConfig(requestConfig);
 
@@ -264,12 +291,14 @@ public class Main {
                     System.out.println("Success! time used: " + (System.currentTimeMillis() - pre) / 1000 + "s");
                     count++;
                 } else {
-                    System.out.println(response.toString());
+                    System.out.println(responseString);
                 }
+                httpClient.close();
             } catch (Exception ex) {
                 System.out.println(ex.getLocalizedMessage());
                 return;
             }
+
         }
     }
 
